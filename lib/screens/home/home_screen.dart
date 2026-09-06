@@ -7,9 +7,13 @@ import '../../services/property_service.dart';
 import '../../services/property_compare_service.dart';
 import '../../widgets/compare_bottom_bar.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../../models/user_model.dart';
+import '../../services/user_service.dart';
+import '../../widgets/custom_button.dart';
 import '../../widgets/featured_property_card.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import '../../widgets/property_card.dart';
+import '../chat/conversations_list_screen.dart';
 import '../property/add_property_screen.dart';
 import '../property/nearby_properties_map_screen.dart';
 import '../property/property_compare_screen.dart';
@@ -25,6 +29,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final PropertyService _propertyService = PropertyService();
+  final UserService _userService = UserService();
   final TextEditingController _searchController = TextEditingController();
 
   String _selectedCategory = 'All';
@@ -84,6 +89,83 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
+  }
+
+  void _handlePostAdTap(UserModel? userModel) {
+    if (userModel != null && !userModel.isSeller) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (context) => Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderGrey,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.storefront_rounded, size: 36, color: AppColors.primary),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Seller Account Required',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.darkNavy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'You are currently registered as a Buyer. Only sellers can list properties for sale or rent.\n\nYou can switch your role anytime in your profile settings.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppColors.slateBlue, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              CustomButton(
+                text: 'Go to Profile',
+                icon: Icons.person_rounded,
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (widget.onNavigateTab != null) {
+                    widget.onNavigateTab!(4);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (widget.onNavigateTab != null) {
+      widget.onNavigateTab!(2);
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AddPropertyScreen(),
+        ),
+      );
+    }
   }
 
   Future<void> _seedData() async {
@@ -225,52 +307,93 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           ),
 
-                          // Add Listing Quick Button
-                          InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              if (widget.onNavigateTab != null) {
-                                widget.onNavigateTab!(2);
-                              } else {
+                          // Messages Quick Button
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => const AddPropertyScreen(),
+                                    builder: (context) => const ConversationsListScreen(),
                                   ),
                                 );
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [AppColors.primaryLight, AppColors.primary],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.3),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 18),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Post Ad',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.borderGrey),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.darkNavy.withValues(alpha: 0.04),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  color: AppColors.darkNavy,
+                                  size: 18,
+                                ),
                               ),
                             ),
+                          ),
+
+                          // Add Listing Quick Button
+                          StreamBuilder<UserModel?>(
+                            stream: user != null ? _userService.streamUser(user.uid) : const Stream.empty(),
+                            builder: (context, userSnap) {
+                              final userModel = userSnap.data;
+                              final isSeller = userModel?.isSeller ?? true;
+
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () => _handlePostAdTap(userModel),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    gradient: isSeller
+                                        ? const LinearGradient(
+                                            colors: [AppColors.primaryLight, AppColors.primary],
+                                          )
+                                        : null,
+                                    color: isSeller ? null : Colors.white,
+                                    border: isSeller ? null : Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(alpha: isSeller ? 0.3 : 0.08),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isSeller ? Icons.add_circle_outline_rounded : Icons.storefront_outlined,
+                                        color: isSeller ? Colors.white : AppColors.primary,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Post Ad',
+                                        style: TextStyle(
+                                          color: isSeller ? Colors.white : AppColors.primary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

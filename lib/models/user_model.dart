@@ -17,11 +17,18 @@ class UserModel {
     required this.email,
     this.phone = '',
     this.bio = '',
-    this.role = 'Client / Buyer',
+    this.role = 'Buyer',
     this.avatarUrl = '',
     required this.createdAt,
     this.updatedAt,
   });
+
+  bool get isSeller {
+    final r = role.toLowerCase();
+    return r.contains('seller') || r.contains('agent');
+  }
+
+  bool get isBuyer => !isSeller;
 
   Map<String, dynamic> toMap() {
     return {

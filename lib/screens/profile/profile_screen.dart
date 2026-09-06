@@ -5,6 +5,9 @@ import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_snackbar.dart';
+import '../chat/conversations_list_screen.dart';
+import '../property/my_bookings_screen.dart';
+import '../property/my_listings_screen.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -256,16 +259,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: user.isSeller
+                  ? AppColors.primary.withValues(alpha: 0.12)
+                  : AppColors.slateBlue.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
-              user.role,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  user.isSeller ? Icons.storefront_rounded : Icons.person_rounded,
+                  size: 14,
+                  color: user.isSeller ? AppColors.primary : AppColors.slateBlue,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  user.role,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: user.isSeller ? AppColors.primary : AppColors.slateBlue,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -345,54 +361,142 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 20),
-            ),
-            title: const Text(
-              'Edit Profile',
-              style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
-            ),
-            subtitle: const Text(
-              'Update your name, phone, bio & role',
-              style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
-            ),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EditProfileScreen(user: user),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.edit_rounded, color: AppColors.primary, size: 20),
                 ),
-              );
-            },
-          ),
-          const Divider(height: 1, indent: 64, color: AppColors.borderGrey),
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.slateBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                title: const Text(
+                  'Edit Profile',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
+                ),
+                subtitle: const Text(
+                  'Update your name, phone, bio & role',
+                  style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditProfileScreen(user: user),
+                    ),
+                  );
+                },
               ),
-              child: const Icon(Icons.lock_reset_rounded, color: AppColors.slateBlue, size: 20),
-            ),
-            title: const Text(
-              'Reset / Change Password',
-              style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
-            ),
-            subtitle: const Text(
-              'Send password reset email to your address',
-              style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
-            ),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
-            onTap: () => _handleResetPassword(user.email),
-          ),
-        ],
+              if (user.isSeller) ...[
+                const Divider(height: 1, indent: 64, color: AppColors.borderGrey),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.storefront_rounded, color: AppColors.primary, size: 20),
+                  ),
+                  title: const Text(
+                    'My Listed Properties',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
+                  ),
+                  subtitle: const Text(
+                    'Manage active, sold, and new listings',
+                    style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyListingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+              const Divider(height: 1, indent: 64, color: AppColors.borderGrey),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.calendar_month_rounded, color: Colors.purple, size: 20),
+                ),
+                title: const Text(
+                  'Scheduled Visits',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
+                ),
+                subtitle: Text(
+                  user.isSeller
+                      ? 'Review & manage incoming visit requests'
+                      : 'Track your booked property visits',
+                  style: const TextStyle(fontSize: 12, color: AppColors.slateBlue),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyBookingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1, indent: 64, color: AppColors.borderGrey),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.teal, size: 20),
+                ),
+                title: const Text(
+                  'Messages & Inquiries',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
+                ),
+                subtitle: const Text(
+                  'Direct chat with property buyers & sellers',
+                  style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConversationsListScreen(),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1, indent: 64, color: AppColors.borderGrey),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.slateBlue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.lock_reset_rounded, color: AppColors.slateBlue, size: 20),
+                ),
+                title: const Text(
+                  'Reset / Change Password',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.darkNavy),
+                ),
+                subtitle: const Text(
+                  'Send password reset email to your address',
+                  style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.silverGrey),
+                onTap: () => _handleResetPassword(user.email),
+              ),
+            ],
           ),
         ),
       ),

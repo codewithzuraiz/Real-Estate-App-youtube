@@ -109,6 +109,25 @@ class PropertyService {
     await _propertiesCollection.doc(property.id).update(data);
   }
 
+  /// Stream properties listed by a specific seller
+  Stream<List<PropertyModel>> streamSellerProperties(String sellerId) {
+    return _propertiesCollection.snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => PropertyModel.fromMap(doc.data(), doc.id))
+          .where((p) => p.sellerId == sellerId || p.agent.id == sellerId)
+          .toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    });
+  }
+
+  /// Update property status ('Active' vs 'Sold')
+  Future<void> updatePropertyStatus(String propertyId, String status) async {
+    await _propertiesCollection.doc(propertyId).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   /// Delete property
   Future<void> deleteProperty(String propertyId) async {
     await _propertiesCollection.doc(propertyId).delete();

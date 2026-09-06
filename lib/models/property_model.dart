@@ -148,6 +148,8 @@ class PropertyModel {
   final int bathrooms;
   final List<String> amenities;
   final AgentModel agent;
+  final String sellerId;
+  final String status; // 'Active' or 'Sold'
   final bool isFeatured;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -170,11 +172,16 @@ class PropertyModel {
     this.bathrooms = 0,
     this.amenities = const [],
     required this.agent,
+    this.sellerId = '',
+    this.status = 'Active',
     this.isFeatured = false,
     required this.createdAt,
     this.updatedAt,
     this.viewsCount = 0,
   });
+
+  bool get isSold => status.toLowerCase() == 'sold';
+  bool get isActive => !isSold;
 
   Map<String, dynamic> toMap() {
     return {
@@ -194,6 +201,8 @@ class PropertyModel {
       'bathrooms': bathrooms,
       'amenities': amenities,
       'agent': agent.toMap(),
+      'sellerId': sellerId.isNotEmpty ? sellerId : agent.id,
+      'status': status,
       'isFeatured': isFeatured,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : FieldValue.serverTimestamp(),
@@ -207,6 +216,10 @@ class PropertyModel {
       if (date is String) return DateTime.tryParse(date) ?? DateTime.now();
       return DateTime.now();
     }
+
+    final agentMap = map['agent'] is Map<String, dynamic> ? map['agent'] as Map<String, dynamic> : <String, dynamic>{};
+    final agentObj = AgentModel.fromMap(agentMap);
+    final seller = map['sellerId']?.toString() ?? agentObj.id;
 
     return PropertyModel(
       id: docId,
@@ -224,7 +237,9 @@ class PropertyModel {
       bedrooms: (map['bedrooms'] as num?)?.toInt() ?? 0,
       bathrooms: (map['bathrooms'] as num?)?.toInt() ?? 0,
       amenities: (map['amenities'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      agent: AgentModel.fromMap(map['agent'] is Map<String, dynamic> ? map['agent'] : {}),
+      agent: agentObj,
+      sellerId: seller,
+      status: map['status'] ?? 'Active',
       isFeatured: map['isFeatured'] ?? false,
       createdAt: parseDate(map['createdAt']),
       updatedAt: map['updatedAt'] != null ? parseDate(map['updatedAt']) : null,
@@ -249,6 +264,8 @@ class PropertyModel {
     int? bathrooms,
     List<String>? amenities,
     AgentModel? agent,
+    String? sellerId,
+    String? status,
     bool? isFeatured,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -271,6 +288,8 @@ class PropertyModel {
       bathrooms: bathrooms ?? this.bathrooms,
       amenities: amenities ?? this.amenities,
       agent: agent ?? this.agent,
+      sellerId: sellerId ?? this.sellerId,
+      status: status ?? this.status,
       isFeatured: isFeatured ?? this.isFeatured,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

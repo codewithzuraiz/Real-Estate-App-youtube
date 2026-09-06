@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/property_model.dart';
 import '../../services/property_service.dart';
+import '../../services/user_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_text_field.dart';
@@ -11,12 +12,16 @@ import 'map_location_picker_screen.dart';
 class AddPropertyScreen extends StatefulWidget {
   final VoidCallback? onSuccess;
   final bool isEmbeddedInTab;
+  final PropertyModel? propertyToEdit;
 
   const AddPropertyScreen({
     super.key,
     this.onSuccess,
     this.isEmbeddedInTab = false,
+    this.propertyToEdit,
   });
+
+  bool get isEditing => propertyToEdit != null;
 
   @override
   State<AddPropertyScreen> createState() => _AddPropertyScreenState();
@@ -92,7 +97,36 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   @override
   void initState() {
     super.initState();
-    _fillDefaultAgentData();
+    if (widget.propertyToEdit != null) {
+      _populateEditData(widget.propertyToEdit!);
+    } else {
+      _fillDefaultAgentData();
+    }
+  }
+
+  void _populateEditData(PropertyModel p) {
+    _titleController.text = p.title;
+    _priceController.text = p.price > 0 ? p.price.toStringAsFixed(0) : '';
+    _descriptionController.text = p.description;
+    _videoUrlController.text = p.videoUrl ?? '';
+    _addressController.text = p.location.address;
+    _areaNameController.text = p.location.areaName;
+    _cityController.text = p.location.city;
+    _latController.text = p.location.latitude.toString();
+    _lngController.text = p.location.longitude.toString();
+    _areaController.text = p.area > 0 ? p.area.toString() : '';
+    _bedroomsController.text = p.bedrooms.toString();
+    _bathroomsController.text = p.bathrooms.toString();
+    _agentNameController.text = p.agent.name;
+    _agentAgencyController.text = p.agent.agency;
+    _agentPhoneController.text = p.agent.phone;
+    _agentEmailController.text = p.agent.email;
+    _purpose = p.purpose;
+    _propertyType = p.propertyType;
+    _areaUnit = p.areaUnit;
+    _isFeatured = p.isFeatured;
+    _imageUrls.addAll(p.images);
+    _selectedAmenities.addAll(p.amenities);
   }
 
   void _fillDefaultAgentData() {
@@ -191,6 +225,20 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
+
+      if (!widget.isEditing && user != null) {
+        final userModel = await UserService().getUser(user.uid);
+        if (userModel != null && !userModel.isSeller) {
+          if (mounted) {
+            CustomSnackBar.showError(
+              context,
+              'Buyer accounts cannot post listings. Please switch your role to Seller in your profile.',
+            );
+          }
+          return;
+        }
+      }
+
       final agent = AgentModel(
         id: user?.uid ?? 'agent_manual',
         name: _agentNameController.text.trim(),
@@ -211,8 +259,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         longitude: double.tryParse(_lngController.text.trim()) ?? 74.3587,
       );
 
+      final isEditing = widget.isEditing;
       final property = PropertyModel(
-        id: '',
+        id: isEditing ? widget.propertyToEdit!.id : '',
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         price: double.tryParse(_priceController.text.trim()) ?? 0.0,
@@ -228,14 +277,23 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         bathrooms: int.tryParse(_bathroomsController.text.trim()) ?? 0,
         amenities: _selectedAmenities.toList(),
         agent: agent,
+        sellerId: user?.uid ?? (isEditing ? widget.propertyToEdit!.sellerId : ''),
+        status: isEditing ? widget.propertyToEdit!.status : 'Active',
         isFeatured: _isFeatured,
-        createdAt: DateTime.now(),
+        createdAt: isEditing ? widget.propertyToEdit!.createdAt : DateTime.now(),
       );
 
-      await _propertyService.addProperty(property);
+      if (isEditing) {
+        await _propertyService.updateProperty(property);
+      } else {
+        await _propertyService.addProperty(property);
+      }
 
       if (mounted) {
-        CustomSnackBar.showSuccess(context, 'Property listed successfully!');
+        CustomSnackBar.showSuccess(
+          context,
+          isEditing ? 'Property updated successfully!' : 'Property listed successfully!',
+        );
         _titleController.clear();
         _priceController.clear();
         _descriptionController.clear();
@@ -250,7 +308,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       }
     } catch (e) {
       if (mounted) {
-        CustomSnackBar.showError(context, 'Failed to list property: $e');
+        CustomSnackBar.showError(context, 'Failed to save property: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -262,7 +320,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
-        title: const Text('Add Property Listing'),
+        title: Text(widget.isEditing ? 'Edit Property Listing' : 'Add Property Listing'),
         automaticallyImplyLeading: !widget.isEmbeddedInTab,
       ),
       body: Form(
@@ -793,7 +851,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
             // Submit Button
             CustomButton(
-              text: 'Publish Property Listing',
+              text: widget.isEditing ? 'Update Property Listing' : 'Publish Property Listing',
               icon: Icons.check_circle_outline_rounded,
               isLoading: _isLoading,
               onPressed: _handleSubmit,

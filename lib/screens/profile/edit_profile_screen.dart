@@ -31,10 +31,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = false;
 
   final List<String> _roles = [
-    'Client / Buyer',
-    'Property Investor',
+    'Buyer',
+    'Seller',
     'Real Estate Agent',
-    'Home Seller',
+    'Property Investor',
   ];
 
   @override
@@ -48,7 +48,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       text: parsed.localNumber.replaceAll(RegExp(r'\D'), ''),
     );
     _bioController = TextEditingController(text: widget.user.bio);
-    _selectedRole = _roles.contains(widget.user.role) ? widget.user.role : _roles.first;
+    
+    // Cleanly map existing role
+    if (_roles.contains(widget.user.role)) {
+      _selectedRole = widget.user.role;
+    } else if (widget.user.isSeller) {
+      _selectedRole = 'Seller';
+    } else {
+      _selectedRole = 'Buyer';
+    }
   }
 
   @override

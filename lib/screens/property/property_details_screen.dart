@@ -4,10 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_theme.dart';
 import '../../models/property_model.dart';
+import '../../models/user_model.dart';
+import '../../services/chat_service.dart';
 import '../../services/property_service.dart';
 import '../../services/property_compare_service.dart';
+import '../../services/user_service.dart';
+import '../../services/visit_booking_service.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/property_map_widget.dart';
+import '../../widgets/schedule_visit_sheet.dart';
+import '../chat/chat_screen.dart';
+import 'add_property_screen.dart';
 import 'property_compare_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
@@ -126,6 +133,73 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
+  Future<void> _openInAppChat() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      CustomSnackBar.showWarning(context, 'Please log in to start a chat.');
+      return;
+    }
+
+    if (user.uid == widget.property.sellerId || user.uid == widget.property.agent.id) {
+      CustomSnackBar.showInfo(context, 'This is your own property listing.');
+      return;
+    }
+
+    try {
+      final buyerModel = await UserService().getUser(user.uid) ??
+          UserModel(
+            uid: user.uid,
+            name: user.displayName ?? 'Buyer',
+            email: user.email ?? '',
+            role: 'Buyer',
+            createdAt: DateTime.now(),
+          );
+
+      final conversation = await ChatService().getOrCreateConversation(
+        property: widget.property,
+        buyer: buyerModel,
+      );
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(conversation: conversation),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) CustomSnackBar.showError(context, 'Failed to start chat: $e');
+    }
+  }
+
+  void _openScheduleVisitSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ScheduleVisitBottomSheet(property: widget.property),
+    );
+  }
+
+  Future<void> _handleToggleSoldStatus() async {
+    final newStatus = widget.property.isSold ? 'Active' : 'Sold';
+    try {
+      await _propertyService.updatePropertyStatus(widget.property.id, newStatus);
+      if (mounted) {
+        CustomSnackBar.showSuccess(
+          context,
+          newStatus == 'Sold'
+              ? 'Property marked as SOLD! 🎉'
+              : 'Property marked as ACTIVE for buyers!',
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) CustomSnackBar.showError(context, 'Failed to update status: $e');
+    }
+  }
+
   @override
   void dispose() {
     _favSubscription?.cancel();
@@ -137,6 +211,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Widget build(BuildContext context) {
     final property = widget.property;
     final images = property.images.isNotEmpty ? property.images : [property.coverImage];
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final isOwner = currentUid.isNotEmpty &&
+        (property.sellerId == currentUid || property.agent.id == currentUid);
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -161,6 +238,29 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
                 actions: [
+                  // Owner Edit Action Button
+                  if (isOwner) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white.withValues(alpha: 0.9),
+                        child: IconButton(
+                          tooltip: 'Edit Listing',
+                          icon: const Icon(Icons.edit_rounded, color: AppColors.darkNavy),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddPropertyScreen(propertyToEdit: widget.property),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+
                   // Compare Action Button
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -343,6 +443,36 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           ),
                         ),
 
+                      // Big SOLD Badge on Gallery
+                      if (property.isSold)
+                        Positioned(
+                          top: 80,
+                          left: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              'SOLD',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+
                       // Photo Counter Badge
                       Positioned(
                         bottom: 14,
@@ -388,6 +518,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         runSpacing: 8,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
+                          if (property.isSold)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.error,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'SOLD',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
@@ -485,6 +632,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                       // Compare Banner
                       _buildCompareBanner(property),
+                      const SizedBox(height: 16),
+
+                      // Visits Scheduled & Tour Booking Card
+                      _buildVisitsBanner(property),
                       const SizedBox(height: 24),
 
                       // Description Section
@@ -566,70 +717,88 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               ),
               child: SafeArea(
                 top: false,
-                child: Row(
-                  children: [
-                    // Price display
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                child: isOwner
+                    ? Row(
                         children: [
-                          const Text(
-                            'Total Price',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.slateBlue,
-                              fontWeight: FontWeight.w500,
+                          // Edit Button
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AddPropertyScreen(propertyToEdit: property),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.edit_rounded, size: 18),
+                              label: const Text('Edit Listing'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.darkNavy,
+                                side: const BorderSide(color: AppColors.borderGrey, width: 1.5),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            property.formattedPrice,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primary,
+                          const SizedBox(width: 10),
+
+                          // Mark as Sold / Active Toggle
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _handleToggleSoldStatus,
+                              icon: Icon(
+                                property.isSold ? Icons.replay_rounded : Icons.check_circle_rounded,
+                                size: 18,
+                              ),
+                              label: Text(property.isSold ? 'Mark Active' : 'Mark as Sold'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: property.isSold ? AppColors.darkNavy : Colors.amber.shade800,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                elevation: 0,
+                              ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Quick Action Buttons
-                    Expanded(
-                      flex: 5,
-                      child: Row(
+                      )
+                    : Row(
                         children: [
-                          // WhatsApp Button
+                          // Price display
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => _launchWhatsApp(property.agent.phone),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF25D366),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                            flex: 4,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Total Price',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.slateBlue,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.chat_rounded, size: 18),
-                                  SizedBox(width: 6),
-                                  Text('Chat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                ],
-                              ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  property.formattedPrice,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
 
-                          // Call Button
+                          // In-App Chat Button
                           Expanded(
+                            flex: 3,
                             child: ElevatedButton(
-                              onPressed: () => _launchCall(property.agent.phone),
+                              onPressed: _openInAppChat,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
@@ -641,8 +810,33 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.phone_rounded, size: 18),
-                                  SizedBox(width: 6),
+                                  Icon(Icons.chat_bubble_rounded, size: 16),
+                                  SizedBox(width: 5),
+                                  Text('Chat', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // Call Button
+                          Expanded(
+                            flex: 3,
+                            child: OutlinedButton(
+                              onPressed: () => _launchCall(property.agent.phone),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.darkNavy,
+                                side: const BorderSide(color: AppColors.borderGrey, width: 1.2),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.phone_rounded, size: 16),
+                                  SizedBox(width: 5),
                                   Text('Call', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                                 ],
                               ),
@@ -650,9 +844,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -801,6 +992,98 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 child: Text(
                   isCompared ? 'Comparing' : 'Compare',
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildVisitsBanner(PropertyModel property) {
+    final visitService = VisitBookingService();
+
+    return StreamBuilder<int>(
+      stream: visitService.streamPropertyVisitsCount(property.id),
+      builder: (context, snapshot) {
+        final visitCount = snapshot.data ?? 0;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.borderGrey, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.darkNavy.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: visitCount > 0 ? Colors.amber.shade100 : AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      visitCount > 0 ? Icons.local_fire_department_rounded : Icons.calendar_today_rounded,
+                      size: 20,
+                      color: visitCount > 0 ? Colors.amber.shade800 : AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          visitCount > 0
+                              ? '$visitCount Property Visits Scheduled'
+                              : 'Schedule a Private Tour',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.darkNavy,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          visitCount > 0
+                              ? 'Active buyer interest! Book your preferred walkthrough slot.'
+                              : 'Pick a convenient date and time to visit this property on-site.',
+                          style: const TextStyle(fontSize: 11, color: AppColors.slateBlue),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _openScheduleVisitSheet,
+                  icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                  label: const Text(
+                    'Book a Property Visit',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.darkNavy,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ],

@@ -24,6 +24,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _authService = AuthService();
 
   CountryCode _selectedCountry = CountryCode.defaultCountry;
+  String _selectedRole = 'Buyer';
   bool _isLoading = false;
 
   @override
@@ -57,6 +58,7 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
         name: _nameController.text,
         phone: fullPhoneNumber,
+        role: _selectedRole,
       );
 
       if (mounted) {
@@ -197,7 +199,165 @@ class _SignupScreenState extends State<SignupScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
+
+                // Role Selection Header
+                const Text(
+                  'I want to join as',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.darkNavy,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Buyer vs Seller Cards Row
+                Row(
+                  children: [
+                    // Buyer Card
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedRole = 'Buyer'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _selectedRole == 'Buyer'
+                                ? AppColors.primary.withValues(alpha: 0.08)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _selectedRole == 'Buyer'
+                                  ? AppColors.primary
+                                  : AppColors.borderGrey,
+                              width: _selectedRole == 'Buyer' ? 2 : 1.2,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _selectedRole == 'Buyer'
+                                          ? AppColors.primary
+                                          : AppColors.scaffoldBg,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.person_search_rounded,
+                                      size: 18,
+                                      color: _selectedRole == 'Buyer'
+                                          ? Colors.white
+                                          : AppColors.slateBlue,
+                                    ),
+                                  ),
+                                  if (_selectedRole == 'Buyer')
+                                    const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Buyer',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkNavy,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Browse, compare & book visits',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.slateBlue.withValues(alpha: 0.9),
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Seller Card
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedRole = 'Seller'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _selectedRole == 'Seller'
+                                ? AppColors.primary.withValues(alpha: 0.08)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _selectedRole == 'Seller'
+                                  ? AppColors.primary
+                                  : AppColors.borderGrey,
+                              width: _selectedRole == 'Seller' ? 2 : 1.2,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _selectedRole == 'Seller'
+                                          ? AppColors.primary
+                                          : AppColors.scaffoldBg,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.storefront_rounded,
+                                      size: 18,
+                                      color: _selectedRole == 'Seller'
+                                          ? Colors.white
+                                          : AppColors.slateBlue,
+                                    ),
+                                  ),
+                                  if (_selectedRole == 'Seller')
+                                    const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Seller',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkNavy,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'List, edit & manage properties',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.slateBlue.withValues(alpha: 0.9),
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 26),
 
                 // Sign Up Button
                 CustomButton(

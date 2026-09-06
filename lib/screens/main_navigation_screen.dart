@@ -1,5 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
+import '../models/user_model.dart';
+import '../services/user_service.dart';
+import 'chat/conversations_list_screen.dart';
 import 'favorites/favorites_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
@@ -17,6 +21,7 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   late int _currentIndex;
+  final UserService _userService = UserService();
 
   @override
   void initState() {
@@ -32,69 +37,89 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      HomeScreen(onNavigateTab: _onTabTapped),
-      const NearbyPropertiesMapScreen(),
-      AddPropertyScreen(
-        isEmbeddedInTab: true,
-        onSuccess: () => _onTabTapped(0),
-      ),
-      FavoritesScreen(onExploreTap: () => _onTabTapped(0)),
-      const ProfileScreen(),
-    ];
+    final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.darkNavy.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  index: 0,
-                  icon: Icons.explore_outlined,
-                  activeIcon: Icons.explore_rounded,
-                  label: 'Explore',
-                ),
-                _buildNavItem(
-                  index: 1,
-                  icon: Icons.map_outlined,
-                  activeIcon: Icons.map_rounded,
-                  label: 'Map',
-                ),
-                _buildAddNavItem(),
-                _buildNavItem(
-                  index: 3,
-                  icon: Icons.favorite_outline_rounded,
-                  activeIcon: Icons.favorite_rounded,
-                  label: 'Saved',
-                ),
-                _buildNavItem(
-                  index: 4,
-                  icon: Icons.person_outline_rounded,
-                  activeIcon: Icons.person_rounded,
-                  label: 'Profile',
+    return StreamBuilder<UserModel?>(
+      stream: user != null ? _userService.streamUser(user.uid) : const Stream.empty(),
+      builder: (context, snapshot) {
+        final userModel = snapshot.data;
+        final isSeller = userModel?.isSeller ?? false;
+
+        final screens = [
+          HomeScreen(onNavigateTab: _onTabTapped),
+          const NearbyPropertiesMapScreen(),
+          isSeller
+              ? AddPropertyScreen(
+                  isEmbeddedInTab: true,
+                  onSuccess: () => _onTabTapped(0),
+                )
+              : const ConversationsListScreen(),
+          FavoritesScreen(onExploreTap: () => _onTabTapped(0)),
+          const ProfileScreen(),
+        ];
+
+        return Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: screens,
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.darkNavy.withValues(alpha: 0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
                 ),
               ],
             ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(
+                      index: 0,
+                      icon: Icons.explore_outlined,
+                      activeIcon: Icons.explore_rounded,
+                      label: 'Explore',
+                    ),
+                    _buildNavItem(
+                      index: 1,
+                      icon: Icons.map_outlined,
+                      activeIcon: Icons.map_rounded,
+                      label: 'Map',
+                    ),
+                    if (isSeller)
+                      _buildAddNavItem()
+                    else
+                      _buildNavItem(
+                        index: 2,
+                        icon: Icons.chat_bubble_outline_rounded,
+                        activeIcon: Icons.chat_bubble_rounded,
+                        label: 'Messages',
+                      ),
+                    _buildNavItem(
+                      index: 3,
+                      icon: Icons.favorite_outline_rounded,
+                      activeIcon: Icons.favorite_rounded,
+                      label: 'Saved',
+                    ),
+                    _buildNavItem(
+                      index: 4,
+                      icon: Icons.person_outline_rounded,
+                      activeIcon: Icons.person_rounded,
+                      label: 'Profile',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

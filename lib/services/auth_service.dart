@@ -15,6 +15,7 @@ class AuthService {
     required String password,
     required String name,
     required String phone,
+    String role = 'Buyer',
   }) async {
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -30,6 +31,7 @@ class AuthService {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        role: role,
         createdAt: DateTime.now(),
       );
 
