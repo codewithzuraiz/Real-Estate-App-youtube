@@ -326,9 +326,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildActionsCard(UserModel user) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -338,9 +336,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          ListTile(
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            children: [
+              ListTile(
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -389,6 +393,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: () => _handleResetPassword(user.email),
           ),
         ],
+          ),
+        ),
       ),
     );
   }

@@ -31,6 +31,32 @@ class UserService {
     return null;
   }
 
+  // Get user by phone number
+  Future<UserModel?> getUserByPhone(String phone) async {
+    final clean = phone.replaceAll(RegExp(r'\s+'), '');
+    // Try exact match first
+    var snapshot = await _usersCollection
+        .where('phone', isEqualTo: phone.trim())
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      final doc = snapshot.docs.first;
+      return UserModel.fromMap(doc.data(), doc.id);
+    }
+
+    // Try without spaces
+    snapshot = await _usersCollection
+        .where('phone', isEqualTo: clean)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      final doc = snapshot.docs.first;
+      return UserModel.fromMap(doc.data(), doc.id);
+    }
+
+    return null;
+  }
+
   // Update full user profile
   Future<void> updateUser(UserModel user) async {
     await _usersCollection.doc(user.uid).update(user.toMap());

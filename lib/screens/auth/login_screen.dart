@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
+import '../../models/country_code.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/custom_phone_field.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_text_field.dart';
 import 'forgot_password_screen.dart';
@@ -17,14 +19,28 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  TextEditingController? _phoneController;
   final _passwordController = TextEditingController();
   final _authService = AuthService();
 
+  CountryCode _selectedCountry = CountryCode.defaultCountry;
+  bool _isPhoneLogin = false;
   bool _isLoading = false;
+
+  TextEditingController get _activePhoneController =>
+      _phoneController ??= TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController ??= TextEditingController();
+    _selectedCountry = CountryCode.defaultCountry;
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
+    _phoneController?.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -35,10 +51,19 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signIn(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+      if (_isPhoneLogin) {
+        final fullPhone =
+            '${_selectedCountry.dialCode} ${_activePhoneController.text.trim()}';
+        await _authService.signInWithPhone(
+          phone: fullPhone,
+          password: _passwordController.text,
+        );
+      } else {
+        await _authService.signIn(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
       if (mounted) {
         CustomSnackBar.showSuccess(context, 'Login successful!');
       }
@@ -116,26 +141,130 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: AppColors.slateBlue,
                     ),
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 28),
 
-                  // Email Field
-                  CustomTextField(
-                    controller: _emailController,
-                    label: 'Email Address',
-                    hint: 'Enter your email',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your email';
-                      }
-                      final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                      if (!emailRegex.hasMatch(value.trim())) {
-                        return 'Please enter a valid email address';
-                      }
-                      return null;
-                    },
+                  // Mode Switcher: Email or Phone Number
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 22),
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.borderGrey, width: 1.2),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isPhoneLogin = false),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: !_isPhoneLogin
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.email_outlined,
+                                    size: 16,
+                                    color: !_isPhoneLogin
+                                        ? Colors.white
+                                        : AppColors.slateBlue,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Email',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: !_isPhoneLogin
+                                          ? Colors.white
+                                          : AppColors.slateBlue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _isPhoneLogin = true),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _isPhoneLogin
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.phone_outlined,
+                                    size: 16,
+                                    color: _isPhoneLogin
+                                        ? Colors.white
+                                        : AppColors.slateBlue,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Phone',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _isPhoneLogin
+                                          ? Colors.white
+                                          : AppColors.slateBlue,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
+                  // Email or Phone Field
+                  if (!_isPhoneLogin)
+                    CustomTextField(
+                      controller: _emailController,
+                      label: 'Email Address',
+                      hint: 'Enter your email',
+                      prefixIcon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        final emailRegex =
+                            RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        if (!emailRegex.hasMatch(value.trim())) {
+                          return 'Please enter a valid email address';
+                        }
+                        return null;
+                      },
+                    )
+                  else
+                    CustomPhoneField(
+                      controller: _activePhoneController,
+                      label: 'Phone Number',
+                      initialCountry: _selectedCountry,
+                      onCountryChanged: (country) {
+                        setState(() => _selectedCountry = country);
+                      },
+                    ),
                   const SizedBox(height: 18),
 
                   // Password Field

@@ -50,6 +50,24 @@ class AuthService {
     );
   }
 
+  // Sign In with Phone & Password
+  Future<UserCredential> signInWithPhone({
+    required String phone,
+    required String password,
+  }) async {
+    final user = await _userService.getUserByPhone(phone);
+    if (user == null || user.email.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No registered account found with phone number $phone.',
+      );
+    }
+    return await signIn(
+      email: user.email,
+      password: password,
+    );
+  }
+
   // Password Reset
   Future<void> sendPasswordResetEmail(String email) async {
     await _auth.sendPasswordResetEmail(email: email.trim());

@@ -4,6 +4,7 @@ import 'favorites/favorites_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
 import 'property/add_property_screen.dart';
+import 'property/nearby_properties_map_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
@@ -33,11 +34,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(onNavigateTab: _onTabTapped),
-      FavoritesScreen(onExploreTap: () => _onTabTapped(0)),
+      const NearbyPropertiesMapScreen(),
       AddPropertyScreen(
         isEmbeddedInTab: true,
         onSuccess: () => _onTabTapped(0),
       ),
+      FavoritesScreen(onExploreTap: () => _onTabTapped(0)),
       const ProfileScreen(),
     ];
 
@@ -59,7 +61,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -71,13 +73,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
                 _buildNavItem(
                   index: 1,
-                  icon: Icons.favorite_outline_rounded,
-                  activeIcon: Icons.favorite_rounded,
-                  label: 'Saved',
+                  icon: Icons.map_outlined,
+                  activeIcon: Icons.map_rounded,
+                  label: 'Map',
                 ),
                 _buildAddNavItem(),
                 _buildNavItem(
                   index: 3,
+                  icon: Icons.favorite_outline_rounded,
+                  activeIcon: Icons.favorite_rounded,
+                  label: 'Saved',
+                ),
+                _buildNavItem(
+                  index: 4,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   label: 'Profile',
@@ -102,7 +110,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       onTap: () => _onTabTapped(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 8,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),

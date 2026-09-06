@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
+import '../../models/country_code.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/custom_phone_field.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -21,7 +23,14 @@ class _SignupScreenState extends State<SignupScreen> {
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
 
+  CountryCode _selectedCountry = CountryCode.defaultCountry;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCountry = CountryCode.defaultCountry;
+  }
 
   @override
   void dispose() {
@@ -39,11 +48,15 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final country = _selectedCountry;
+      final fullPhoneNumber =
+          '${country.dialCode} ${_phoneController.text.trim()}';
+
       await _authService.signUp(
         email: _emailController.text,
         password: _passwordController.text,
         name: _nameController.text,
-        phone: _phoneController.text,
+        phone: fullPhoneNumber,
       );
 
       if (mounted) {
@@ -64,6 +77,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _selectedCountry = _selectedCountry;
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
@@ -135,18 +149,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // Phone
-                CustomTextField(
+                // Phone with Country Code Dropdown & Dynamic Digit Validation
+                CustomPhoneField(
                   controller: _phoneController,
-                  label: 'Phone Number',
-                  hint: '+1 234 567 8900',
-                  prefixIcon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your phone number';
-                    }
-                    return null;
+                  initialCountry: _selectedCountry,
+                  onCountryChanged: (country) {
+                    setState(() => _selectedCountry = country);
                   },
                 ),
                 const SizedBox(height: 18),

@@ -174,12 +174,12 @@ class PropertyService {
 
   /// Seed high quality realistic sample property listings
   Future<void> seedSampleProperties() async {
-    final existing = await _propertiesCollection.limit(1).get();
-    if (existing.docs.isNotEmpty) {
-      // Already has data, can still append or force seed
+    for (final prop in sampleProperties) {
+      await addProperty(prop);
     }
+  }
 
-    final sampleProperties = [
+  static List<PropertyModel> get sampleProperties => [
       PropertyModel(
         id: '',
         title: 'Luxury 1 Kanal Modern Designer Villa',
@@ -482,9 +482,4 @@ class PropertyService {
         viewsCount: 95,
       ),
     ];
-
-    for (final prop in sampleProperties) {
-      await addProperty(prop);
-    }
-  }
 }

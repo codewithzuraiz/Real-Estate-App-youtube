@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
+import '../../models/country_code.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/custom_phone_field.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/custom_text_field.dart';
 
@@ -22,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _phoneController;
   late final TextEditingController _bioController;
   late String _selectedRole;
+  late CountryCode _selectedCountry;
 
   final _userService = UserService();
   final _authService = AuthService();
@@ -37,8 +40,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    final parsed = CountryCode.parsePhone(widget.user.phone);
+    _selectedCountry = parsed.country;
+
     _nameController = TextEditingController(text: widget.user.name);
-    _phoneController = TextEditingController(text: widget.user.phone);
+    _phoneController = TextEditingController(
+      text: parsed.localNumber.replaceAll(RegExp(r'\D'), ''),
+    );
     _bioController = TextEditingController(text: widget.user.bio);
     _selectedRole = _roles.contains(widget.user.role) ? widget.user.role : _roles.first;
   }
@@ -57,9 +65,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final fullPhoneNumber = _phoneController.text.trim().isNotEmpty
+          ? '${_selectedCountry.dialCode} ${_phoneController.text.trim()}'
+          : '';
+
       final updatedUser = widget.user.copyWith(
         name: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
+        phone: fullPhoneNumber,
         bio: _bioController.text.trim(),
         role: _selectedRole,
       );
@@ -146,13 +158,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // Phone
-                CustomTextField(
+                // Phone with Country Code Dropdown & Dynamic Digit Validation
+                CustomPhoneField(
                   controller: _phoneController,
                   label: 'Phone Number',
-                  hint: 'Enter phone number',
-                  prefixIcon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone,
+                  initialCountry: _selectedCountry,
+                  isRequired: false,
+                  onCountryChanged: (country) {
+                    setState(() => _selectedCountry = country);
+                  },
                 ),
                 const SizedBox(height: 18),
 

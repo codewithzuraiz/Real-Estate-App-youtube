@@ -757,9 +757,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
 
             // Featured Switch
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -768,19 +766,27 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                   ),
                 ],
               ),
-              child: SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                activeThumbColor: AppColors.primary,
-                title: const Text(
-                  'Mark as Featured Listing',
-                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.darkNavy),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: AppColors.primary,
+                    title: const Text(
+                      'Mark as Featured Listing',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.darkNavy),
+                    ),
+                    subtitle: const Text(
+                      'Highlight this property on the home screen carousel',
+                      style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
+                    ),
+                    value: _isFeatured,
+                    onChanged: (val) => setState(() => _isFeatured = val),
+                  ),
                 ),
-                subtitle: const Text(
-                  'Highlight this property on the home screen carousel',
-                  style: TextStyle(fontSize: 12, color: AppColors.slateBlue),
-                ),
-                value: _isFeatured,
-                onChanged: (val) => setState(() => _isFeatured = val),
               ),
             ),
             const SizedBox(height: 24),

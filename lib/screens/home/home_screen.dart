@@ -8,6 +8,7 @@ import '../../widgets/featured_property_card.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import '../../widgets/property_card.dart';
 import '../property/add_property_screen.dart';
+import '../property/nearby_properties_map_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -266,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
 
                           // Filter Trigger Button
                           Material(
@@ -284,6 +285,41 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Icon(
                                   Icons.tune_rounded,
                                   color: _activeFilters.hasActiveFilters ? Colors.white : AppColors.darkNavy,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+
+                          // Map View Quick Button
+                          Material(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            elevation: 1,
+                            shadowColor: AppColors.darkNavy.withValues(alpha: 0.1),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                if (widget.onNavigateTab != null) {
+                                  widget.onNavigateTab!(1);
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const NearbyPropertiesMapScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                height: 52,
+                                width: 52,
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.map_rounded,
+                                  color: AppColors.primary,
                                   size: 22,
                                 ),
                               ),
