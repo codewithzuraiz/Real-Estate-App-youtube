@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/property_model.dart';
 import '../../services/property_service.dart';
+import '../../services/property_compare_service.dart';
+import '../../widgets/compare_bottom_bar.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/property_card.dart';
+import '../property/property_compare_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
   final VoidCallback? onExploreTap;
@@ -36,8 +39,39 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
         title: const Text('Saved Properties'),
+        actions: [
+          ListenableBuilder(
+            listenable: PropertyCompareService(),
+            builder: (context, _) {
+              final compareService = PropertyCompareService();
+              if (compareService.isEmpty) return const SizedBox.shrink();
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: IconButton(
+                  tooltip: 'View Comparison (${compareService.count})',
+                  icon: Badge(
+                    label: Text('${compareService.count}'),
+                    backgroundColor: AppColors.primary,
+                    child: const Icon(Icons.compare_arrows_rounded, color: AppColors.darkNavy),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PropertyCompareScreen(),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
       ),
-      body: StreamBuilder<List<PropertyModel>>(
+      body: Stack(
+        children: [
+          StreamBuilder<List<PropertyModel>>(
         stream: _propertyService.streamFavoriteProperties(user.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -112,7 +146,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 90),
             itemCount: favorites.length,
             itemBuilder: (context, index) {
               final property = favorites[index];
@@ -130,6 +164,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           );
         },
       ),
-    );
+      const CompareBottomBar(bottomPadding: 16),
+    ],
+  ),
+);
   }
 }

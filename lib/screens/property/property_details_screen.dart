@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_theme.dart';
 import '../../models/property_model.dart';
 import '../../services/property_service.dart';
+import '../../services/property_compare_service.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/property_map_widget.dart';
+import 'property_compare_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
@@ -25,6 +28,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   int _currentImageIndex = 0;
   bool _isDescriptionExpanded = false;
   bool _isFavorite = false;
+  StreamSubscription<Set<String>>? _favSubscription;
 
   @override
   void initState() {
@@ -37,7 +41,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   void _checkFavoriteStatus() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      _propertyService.streamFavoriteIds(user.uid).listen((ids) {
+      _favSubscription?.cancel();
+      _favSubscription = _propertyService.streamFavoriteIds(user.uid).listen((ids) {
         if (mounted) {
           setState(() {
             _isFavorite = ids.contains(widget.property.id);
@@ -123,6 +128,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   void dispose() {
+    _favSubscription?.cancel();
     _imagePageController.dispose();
     super.dispose();
   }
@@ -155,8 +161,69 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
                 actions: [
+                  // Compare Action Button
                   Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: ListenableBuilder(
+                      listenable: PropertyCompareService(),
+                      builder: (context, _) {
+                        final compareService = PropertyCompareService();
+                        final isCompared = compareService.isInCompare(widget.property.id);
+
+                        return CircleAvatar(
+                          backgroundColor: isCompared
+                              ? AppColors.primary
+                              : Colors.white.withValues(alpha: 0.9),
+                          child: IconButton(
+                            tooltip: isCompared ? 'Open Comparison' : 'Add to Comparison',
+                            icon: Icon(
+                              Icons.compare_arrows_rounded,
+                              color: isCompared ? Colors.white : AppColors.darkNavy,
+                            ),
+                            onPressed: () {
+                              if (isCompared) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const PropertyCompareScreen(),
+                                  ),
+                                );
+                              } else {
+                                final added = compareService.add(widget.property);
+                                if (added) {
+                                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Added to compare (${compareService.count}/4)'),
+                                      action: SnackBarAction(
+                                        label: 'View Compare',
+                                        textColor: Colors.amber,
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const PropertyCompareScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                } else if (compareService.isFull) {
+                                  CustomSnackBar.showWarning(context, 'Maximum 4 properties can be compared');
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+
+                  // Favorite Button
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 8.0),
                     child: CircleAvatar(
                       backgroundColor: Colors.white.withValues(alpha: 0.9),
                       child: IconButton(
@@ -414,6 +481,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                       // Key Specs Grid Card
                       _buildKeySpecsCard(property),
+                      const SizedBox(height: 16),
+
+                      // Compare Banner
+                      _buildCompareBanner(property),
                       const SizedBox(height: 24),
 
                       // Description Section
@@ -637,6 +708,105 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCompareBanner(PropertyModel property) {
+    return ListenableBuilder(
+      listenable: PropertyCompareService(),
+      builder: (context, _) {
+        final compareService = PropertyCompareService();
+        final isCompared = compareService.isInCompare(property.id);
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.darkNavy,
+                AppColors.darkNavy.withValues(alpha: 0.9),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.darkNavy.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.compare_arrows_rounded,
+                  color: AppColors.primary,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Compare Properties',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      property.location.areaName.isNotEmpty
+                          ? 'Compare side-by-side with other listings in ${property.location.areaName}'
+                          : 'Compare price, square feet, and amenities side-by-side',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: () {
+                  if (!isCompared) {
+                    compareService.add(property);
+                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PropertyCompareScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  isCompared ? 'Comparing' : 'Compare',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -1,14 +1,18 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../config/app_theme.dart';
 import '../../models/property_model.dart';
 import '../../services/property_service.dart';
+import '../../services/property_compare_service.dart';
+import '../../widgets/compare_bottom_bar.dart';
 import '../../widgets/custom_snackbar.dart';
 import '../../widgets/featured_property_card.dart';
 import '../../widgets/filter_bottom_sheet.dart';
 import '../../widgets/property_card.dart';
 import '../property/add_property_screen.dart';
 import '../property/nearby_properties_map_screen.dart';
+import '../property/property_compare_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigateTab;
@@ -28,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   bool _isSeeding = false;
   Set<String> _favoriteIds = {};
+  StreamSubscription<Set<String>>? _favSubscription;
 
   final List<String> _categories = [
     'All',
@@ -48,7 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _listenFavorites() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      _propertyService.streamFavoriteIds(user.uid).listen((ids) {
+      _favSubscription?.cancel();
+      _favSubscription = _propertyService.streamFavoriteIds(user.uid).listen((ids) {
         if (mounted) setState(() => _favoriteIds = ids);
       });
     }
@@ -56,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _favSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -121,12 +128,14 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
         bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: () async {
-            setState(() {});
-          },
-          child: CustomScrollView(
+        child: Stack(
+          children: [
+            RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                setState(() {});
+              },
+              child: CustomScrollView(
             slivers: [
               // Top Header & Search App Bar
               SliverToBoxAdapter(
@@ -168,6 +177,52 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                             ),
+                          ),
+
+                          // Compare Quick Button (when items selected)
+                          ListenableBuilder(
+                            listenable: PropertyCompareService(),
+                            builder: (context, _) {
+                              final compareService = PropertyCompareService();
+                              if (compareService.isEmpty) return const SizedBox.shrink();
+
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const PropertyCompareScreen(),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.darkNavy,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.compare_arrows_rounded, color: AppColors.primary, size: 18),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${compareService.count}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
 
                           // Add Listing Quick Button
@@ -650,12 +705,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Bottom Spacer
               const SliverToBoxAdapter(
-                child: SizedBox(height: 40),
+                child: SizedBox(height: 90),
               ),
             ],
           ),
         ),
-      ),
-    );
+
+        // Floating Compare Tray
+        const CompareBottomBar(bottomPadding: 16),
+      ],
+    ),
+  ),
+);
   }
 }

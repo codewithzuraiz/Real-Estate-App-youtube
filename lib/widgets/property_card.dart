@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../models/property_model.dart';
 import '../screens/property/property_details_screen.dart';
+import '../services/property_compare_service.dart';
+import 'custom_snackbar.dart';
 
 class PropertyCard extends StatelessWidget {
   final PropertyModel property;
@@ -126,6 +128,46 @@ class PropertyCard extends StatelessWidget {
                           letterSpacing: 0.5,
                         ),
                       ),
+                    ),
+                  ),
+
+                  // Compare Toggle Button
+                  Positioned(
+                    top: 14,
+                    right: 58,
+                    child: ListenableBuilder(
+                      listenable: PropertyCompareService(),
+                      builder: (context, _) {
+                        final compareService = PropertyCompareService();
+                        final isCompared = compareService.isInCompare(property.id);
+
+                        return Material(
+                          color: isCompared ? AppColors.primary : Colors.white.withValues(alpha: 0.85),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {
+                              final wasInCompare = compareService.isInCompare(property.id);
+                              final added = compareService.toggle(property);
+                              if (added) {
+                                CustomSnackBar.showSuccess(context, 'Added to comparison (${compareService.count}/4)');
+                              } else if (!wasInCompare && compareService.isFull) {
+                                CustomSnackBar.showWarning(context, 'Maximum 4 properties can be compared');
+                              } else {
+                                CustomSnackBar.showInfo(context, 'Removed from comparison');
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.compare_arrows_rounded,
+                                color: isCompared ? Colors.white : AppColors.darkNavy,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
